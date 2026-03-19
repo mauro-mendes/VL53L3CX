@@ -1,74 +1,132 @@
-# VL53L3CX Raspberry Pi C Library
+# VL53LX Time-of-Flight Sensor Example (Raspberry Pi 5 Compatible)
 
+![Raspberry Pi 5](https://img.shields.io/badge/RPi-5-green)
 
-## Screenshots
+This project demonstrates how to use the STMicroelectronics VL53L3CX Time-of-Flight sensor with a Raspberry Pi.
+
+This repository is based on the original implementation and has been adapted to work reliably on **Raspberry Pi 5**.
+
+---
+
+## 📌 Changes from Upstream
+
+This fork includes the following fixes and improvements:
+
+* Fixed I2C addressing mode (**7-bit instead of 10-bit**)
+* Added reliable sensor reset using **XSHUT via GPIO26**
+* Replaced legacy GPIO handling with `pinctrl` (Raspberry Pi 5 compatible)
+* Adjusted reset timing for stable initialization
+* Updated build and run instructions (`vl53lx_pi`)
+* Tested and validated on Raspberry Pi 5
+
+---
+
+## 📦 Requirements
+
+```bash
+sudo apt update
+sudo apt install build-essential make i2c-tools libczmq-dev
+```
+
+Enable I2C:
+
+```bash
+sudo raspi-config
+# Interface Options → I2C → Enable
+```
+
+---
+
+## 🔌 Wiring
+
+| VL53L3CX Pin | Raspberry Pi  |
+| ------------ | ------------- |
+| VIN          | 3.3V          |
+| GND          | GND           |
+| SDA          | GPIO2 (Pin 3) |
+| SCL          | GPIO3 (Pin 5) |
+| XSHUT        | GPIO26        |
+| INT          | Not used      |
+
+### Notes
+
+* XSHUT is controlled via GPIO26 for reliable reset
+* Direct 3.3V on XSHUT may work, but is not recommended for repeated runs
+
+---
+
+## ⚙️ Build
+
+```bash
+git clone https://github.com/mauro-mendes/VL53L3CX.git
+cd VL53L3CX
+make
+make vl53lx_pi
+```
+
+---
+
+## ▶️ Run
+
+```bash
+sudo ./bin/vl53lx_pi
+```
+
+---
+
+## ⚠️ Troubleshooting
+
+### Remote I/O error
+
+```text
+errno=121 (Remote I/O error)
+ERROR: CONTROL INTERFACE
+```
+
+#### Causes:
+
+* Long cables on I2C
+* Poor connections
+* Signal noise
+
+#### Solution:
+
+* Use **short jumper wires**
+* Avoid Ethernet cables for I2C
+* Ensure solid grounding
+
+---
+
+## ⚡ Known Issues
+
+* I2C may become unstable with long wires
+* Proper XSHUT reset is required between runs
+
+---
+
+## 📷 Example Output
+
+*(original image preserved)*
+
 C program:
 ![Wiring diagram](screenshot.png)
 Python subscriber:
 ![Wiring diagram](screenshot2.png)
-## Wiring
-![Wiring diagram](pinout.png)
 
+---
 
-## Build from source
-You can build the application from source using the following steps:
-        
-1. Install ZeroMQ dependency
+## 📚 Original Project
 
-        sudo apt install libczmq-dev
-2. Clone the repo and build
+https://github.com/74ls04/vl53lx-pi
 
-        git clone https://github.com/74ls04/vl53lx-pi.git
-        cd vl53lx-pi
-        make vl53lx-pi
+---
 
-3. Then you can run it using:
+## 👨‍💻 Author
 
-        ./bin/vl53lx-pi
+Adapted for Raspberry Pi 5 by Mauro Mendes
 
-To publish the data over the network on default port `5556` using histogram B data only, use the command:
-        
-        ./bin/vl53lx_pi --histogram=B
+---
 
-## Configure and start
-To start the application, you can use the `vl53lx_pi` executable. There are several things you can configure:
-  
+## 📄 License
 
-        Usage: ./bin/vl53lx_pi [OPTION]...
-        Options:
-        -g, --histogram=NAME                  Show histogram data. A, B, or AB.
-        -c, --compact                         Enable compact mode.
-        -q, --quiet                           Disable debug messages.
-        -d, --distance-mode=MODE              Set distance mode. SHORT, MEDIUM, or LONG.
-        -p, --port=NUMBER                     Set the port number for publishing data. Default 5556.
-        -m, --poll-period=MILLISECONDS        Set device polling period in (ms). (Default=33).
-        -t, --timing-budget=MILLISECONDS      Set VL53L3CX timing budget (8ms to 500ms). (Default=33).
-        -x, --xshut-pin=NUMBER                Set GPIO pin for XSHUT (Default=4).
-        -a, --address=ADDRESS                 Set VL53L3CX I2C address.
-        -h, --help                            Print this help message.
-
-## Install or update [NOT COMPLETE]
-To install, download the latest release from the [releases page](https://github.com/74ls04/vl53lx-pi/releases) 
-        
-        wget http://RELEASE_NAME_URL.tar.gz
-Extract the application to the install directory:
-
-        rm -rf /usr/local/vl53lx-pi && tar -C /usr/local -xzf RELEASE_NAME.tar.gz
-
-Then add the application to the PATH environment variable:
-
-        echo 'export PATH=$PATH:/usr/local/vl53lx-pi'  >> $HOME/.profile
-
-You can make the changes immediately available by running:
-
-        source $HOME/.profile
-
-Verify installation by running:
-
-        $ vl53lx-pi --help
-        
-## Uninstall
-To uninstall, run the command using sudo:
-        
-        rm -rf /usr/local/vl53lx-pi
-
+Same as upstream repository

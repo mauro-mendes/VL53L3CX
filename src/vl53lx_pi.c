@@ -290,7 +290,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    usleep(1000000);   // 1 s em reset
+    usleep(100000);   // 1 s em reset
 
     if (rpi_gpio_set_output(XSHUTPIN, 1) != 0)
     {
@@ -298,7 +298,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    usleep(1000000);   // 1 s após liberar reset
+    usleep(100000);   // 1 s após liberar reset
 //--------------------
     // Delay for a bit
     usleep(10000); // 10 millisecond

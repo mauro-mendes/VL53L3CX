@@ -9,6 +9,7 @@
 #include <sys/uio.h>
 #include "vl53lx_platform.h"
 #include "vl53lx_api.h"
+#include <string.h>
 
 int VL53LX_i2c_init(char * devPath, int devAddr)
 {
@@ -23,10 +24,9 @@ int VL53LX_i2c_init(char * devPath, int devAddr)
         /* ERROR HANDLING; you can check errno to see what went wrong */
         return -1;
     }
-    if (ioctl(file, I2C_TENBIT, 1) < 0) {
-      printf("Failed to set ten bit addressing.\n");
-      /* ERROR HANDLING; you can check errno to see what went wrong */
-      return -1;
+    if (ioctl(file, I2C_TENBIT, 0) < 0) {
+        printf("Failed to set 7-bit addressing.\n");
+        return -1;
     }
     return file;
 }
@@ -37,45 +37,50 @@ int32_t VL53LX_i2c_close(void)
     return VL53LX_ERROR_NOT_IMPLEMENTED;
 }
 
-static int i2c_write(int fd, uint16_t cmd, uint8_t * data, uint8_t len){
-
-#if 0
-    // Looks like i2c-dev doesn't support writev
-    struct iovec vec[2];
-    uint8_t buf[2] = { cmd >> 8, cmd & 0xff };
-    vec[0].iov_base = buf;
-    vec[0].iov_len = 2;
-    vec[1].iov_base = data;
-    vec[2].iov_len = len;
-    if (writev(fd, vec, 2) != len+2) {
-        printf("Failed to write to the i2c bus due to %s.\n", strerror(errno));
+static int i2c_write(int fd, uint16_t cmd, uint8_t * data, uint32_t len){
+    uint8_t *buf = malloc(len + 2);
+    if (!buf) {
+        fprintf(stderr, "[I2C WRITE ERROR] malloc failed len=%u\n", len);
         return VL53LX_ERROR_CONTROL_INTERFACE;
     }
-#else
-    uint8_t *buf = malloc(len + 2);
+
     buf[0] = cmd >> 8;
     buf[1] = cmd & 0xff;
     memcpy(buf + 2, data, len);
-    if (write(fd, buf, len + 2) != len+2) {
+
+    //fprintf(stderr, "[I2C WRITE] reg=0x%04x len=%u\n", cmd, len);
+
+    ssize_t ret = write(fd, buf, len + 2);
+    if (ret != len + 2) {
+        fprintf(stderr,
+            "[I2C WRITE ERROR] reg=0x%04x len=%u ret=%zd errno=%d (%s)\n",
+            cmd, len, ret, errno, strerror(errno));
         free(buf);
-        printf("Failed to write to the i2c bus due to %s.\n", strerror(errno));
         return VL53LX_ERROR_CONTROL_INTERFACE;
     }
+
     free(buf);
-#endif
     return VL53LX_ERROR_NONE;
 }
 
-static int i2c_read(int fd, uint16_t cmd, uint8_t * data, uint8_t len){
-
+static int i2c_read(int fd, uint16_t cmd, uint8_t * data, uint32_t len){
     uint8_t buf[2] = { cmd >> 8, cmd & 0xff };
-    if (write(fd, buf, 2) != 2) {
-        printf("Failed to write to the i2c bus due to %s.\n", strerror(errno));
+
+    //fprintf(stderr, "[I2C READ] reg=0x%04x len=%u\n", cmd, len);
+
+    ssize_t ret = write(fd, buf, 2);
+    if (ret != 2) {
+        fprintf(stderr,
+            "[I2C READ ADDR ERROR] reg=0x%04x len=%u ret=%zd errno=%d (%s)\n",
+            cmd, len, ret, errno, strerror(errno));
         return VL53LX_ERROR_CONTROL_INTERFACE;
     }
 
-    if (read(fd, data, len) != len) {
-        printf("Failed to read from the i2c bus due to %s.\n", strerror(errno));
+    ret = read(fd, data, len);
+    if (ret != len) {
+        fprintf(stderr,
+            "[I2C READ ERROR] reg=0x%04x len=%u ret=%zd errno=%d (%s)\n",
+            cmd, len, ret, errno, strerror(errno));
         return VL53LX_ERROR_CONTROL_INTERFACE;
     }
 

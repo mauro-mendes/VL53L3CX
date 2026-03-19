@@ -16,6 +16,8 @@ Based on the i2c port of https://github.com/74ls04/VL53L3CX_rasppi
 #include "vl53lx_platform.h"
 #include <czmq.h>
 #include <assert.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 // Macro to turn printing on or off
 #define print(format, ...)                 \
@@ -96,7 +98,7 @@ int quiet_flag = 0;                                              // [-q] Disable
 int tcp_port = 5556;                                             // [-p] TCP port to publish on
 int poll_period = 33;                                            // [-p] Device polling period in (ms)
 int timing_budget = 33;                                          // [-t] VL53L3CX timing budget (8ms to 500ms)
-int XSHUTPIN = 4;                                                // [-x] GPIO pin for XSHUT (default: 4)
+int XSHUTPIN = 26;                                                // [-x] GPIO pin for XSHUT (default: 26)
 uint8_t address = 0x29;                                          // [-a] VL53L3CX I2C address (Default is 0x29)
 VL53LX_DistanceModes distance_mode = VL53LX_DISTANCEMODE_MEDIUM; // Distance mode. SHORT, MEDIUM, or LONG. (default: MEDIUM)
 
@@ -138,6 +140,20 @@ static void help(void)
     printf("  -a, --address=ADDRESS\t\t\tSet VL53L3CX I2C address.\n");
     printf("  -h, --help\t\t\t\tPrint this help message.\n");
     printf("\n");
+}
+
+static int rpi_gpio_set_output(int pin, int value)
+{
+    char cmd[128];
+    snprintf(cmd, sizeof(cmd), "pinctrl set %d op %s", pin, value ? "dh" : "dl");
+    return system(cmd);
+}
+
+static void rpi_gpio_close_pin(int pin)
+{
+    char cmd[128];
+    snprintf(cmd, sizeof(cmd), "pinctrl set %d ip", pin);
+    system(cmd);
 }
 
 void check_status(int status)
@@ -267,41 +283,23 @@ int main(int argc, char *argv[])
     // Turn on the sensor using GPIO4
     // Enable GPIO4 using sysfs
     char buf[100];
-
-    FILE *fp = fopen("/sys/class/gpio/export", "w");
-    if (fp == NULL)
+//--------------------
+    if (rpi_gpio_set_output(XSHUTPIN, 0) != 0)
     {
-        print("Failed to open /sys/class/gpio/export\n");
-        raise(SIGTERM);
+        print("Failed to drive XSHUT low\n");
+        exit(1);
     }
-    fprintf(fp, "%d", XSHUTPIN);
-    fclose(fp);
 
-    // Give the udev rules a chance to make the GPIO available
-    sleep(1);
+    usleep(1000000);   // 1 s em reset
 
-    // Set as output
-    sprintf(buf, "/sys/class/gpio/gpio%d/direction", XSHUTPIN);
-    fp = fopen(buf, "w");
-    if (fp == NULL)
+    if (rpi_gpio_set_output(XSHUTPIN, 1) != 0)
     {
-        print("Failed to open %s\n", buf);
-        raise(SIGTERM);
+        print("Failed to drive XSHUT high\n");
+        exit(1);
     }
-    fprintf(fp, "out");
-    fclose(fp);
 
-    // Set GPIO4 high
-    sprintf(buf, "/sys/class/gpio/gpio%d/value", XSHUTPIN);
-    fp = fopen(buf, "w");
-    if (fp == NULL)
-    {
-        print("Failed to open %s\n", buf);
-        raise(SIGTERM);
-    }
-    fprintf(fp, "1");
-    fclose(fp);
-
+    usleep(1000000);   // 1 s após liberar reset
+//--------------------
     // Delay for a bit
     usleep(10000); // 10 millisecond
 
@@ -376,34 +374,13 @@ int main(int argc, char *argv[])
 }
 
 // CTRL-C handler
+// CTRL-C handler
 void signal_handler(int signal)
 {
-
-    // Print if not in compact mode
-
     print("\n\rExiting...\n\r");
 
-    // Turn off the sensor using GPIO4
-    char buf[100];
-    sprintf(buf, "/sys/class/gpio/gpio%d/value", XSHUTPIN);
-    FILE *fp = fopen(buf, "w");
-    if (fp == NULL)
-    {
-        print("Failed to open %s\n", buf);
-        return;
-    }
-    fprintf(fp, "0");
-    fclose(fp);
-
-    // Disable GPIO4 using sysfs
-    fp = fopen("/sys/class/gpio/unexport", "w");
-    if (fp == NULL)
-    {
-        print("Failed to open /sys/class/gpio/unexport\n");
-        // return;
-    }
-    fprintf(fp, "%d", XSHUTPIN);
-    fclose(fp);
+    rpi_gpio_set_output(XSHUTPIN, 0);
+    rpi_gpio_close_pin(XSHUTPIN);
 
     exit(signal);
 }

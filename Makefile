@@ -46,11 +46,9 @@ LIB_SRCS = \
 
 LIB_OBJS  = $(LIB_SRCS:%.c=$(OBJ_DIR)/%.o)
 
-SRC = \
-  src/vl53lx_pi.c
+BIN_SRC = src/vl53lx_pi.c
 
-BIN = $(SRC:src/%.c=$(OUTPUT_DIR)/%)
-
+BIN = $(OUTPUT_DIR)/vl53lx_pi
 
 .PHONY: all
 all: ${TARGET_LIB}
@@ -63,9 +61,9 @@ $(OBJ_DIR)/%.o:%.c
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(INCLUDES) $< -o $@
 
-$(BIN): bin/%:src/%.c
+$(BIN): $(BIN_SRC) $(TARGET_LIB)
 	mkdir -p $(dir $@)
-	$(CC) -L$(OUTPUT_DIR) $^ -lVL53LX_pi $(COMMON_LIBS) $(INCLUDES) -o $@
+	$(CC) -L$(OUTPUT_DIR) $(BIN_SRC) -lVL53LX_pi $(COMMON_LIBS) $(INCLUDES) -o $@
 
 vl53lx_pi:${OUTPUT_DIR} ${TARGET_LIB} $(BIN)
 

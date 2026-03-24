@@ -2,7 +2,7 @@
 
 ![Raspberry Pi 5](https://img.shields.io/badge/RPi-5-green)
 
-This project demonstrates how to use the STMicroelectronics VL53L3CX Time-of-Flight sensor with a Raspberry Pi, including a ready-to-use Python subscriber for real-time data processing.
+This project demonstrates how to use the STMicroelectronics VL53L3CX Time-of-Flight sensor with a Raspberry Pi 5, including a ready-to-use Python subscriber for real-time data processing.
 
 ---
 
